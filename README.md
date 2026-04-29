@@ -30,8 +30,7 @@ Automatically searches for weekend activities in St. Louis, checks the family ca
 
 ## Recipients
 
-- `you@example.com`
-- `recipient@example.com`
+Configure recipient email addresses in `weekend_planner.py` under the `RECIPIENTS` list.
 
 ## Setup
 
