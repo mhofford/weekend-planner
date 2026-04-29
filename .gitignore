@@ -1,0 +1,20 @@
+# Google OAuth credentials — never commit these
+credentials.json
+token.json
+
+# Personal/family data
+family_profile.json
+
+# Generated output
+emails/
+run.log
+debug_prompt.txt
+
+# Claude Code project memory
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
