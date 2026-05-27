@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import requests
 import anthropic
 from datetime import datetime, timedelta, timezone
@@ -889,7 +890,6 @@ Respond with only the HTML email — nothing before <EMAIL_HTML> and nothing aft
         print(f"  [DEBUG] Skipping Claude call and email send.")
         return None, None
 
-    print("  Calling Claude to evaluate results and generate email...")
     client = anthropic.Anthropic(api_key=anthropic_key)
     with client.messages.stream(
         model="claude-opus-4-6",
@@ -906,36 +906,63 @@ Respond with only the HTML email — nothing before <EMAIL_HTML> and nothing aft
 
 
 # ---------------------------------------------------------------------------
+# Progress display
+# ---------------------------------------------------------------------------
+
+class StepTimer:
+    def __init__(self, total):
+        self.total = total
+        self.n = 0
+        self.step_start = None
+        self.run_start = time.time()
+
+    def start(self, label):
+        self._done_prev()
+        self.n += 1
+        prefix = "\n" if self.n > 1 else ""
+        print(f"{prefix}[{self.n}/{self.total}] {label}...", flush=True)
+        self.step_start = time.time()
+
+    def _done_prev(self):
+        if self.step_start is not None:
+            elapsed = time.time() - self.step_start
+            print(f"  done ({elapsed:.1f}s)")
+            self.step_start = None
+
+    def finish(self, final_msg=""):
+        self._done_prev()
+        total = time.time() - self.run_start
+        if final_msg:
+            print(f"\n{final_msg}")
+        print(f"Total time: {total:.0f}s")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     debug = "--debug" in sys.argv
+    total_steps = 5 if debug else 6
+    t = StepTimer(total_steps)
 
-    print("Loading family profile...")
+    t.start("Loading family profile")
     profile = load_profile()
 
-    print("Fetching weekend weather...")
+    t.start("Fetching weekend weather")
     weather_data, weather_failed = fetch_weather(profile)
 
     firecrawl_key = get_firecrawl_key()
-    if firecrawl_key:
-        print("Firecrawl key found — venue searches will use full page scraping.")
-    else:
-        print("No Firecrawl key found — venue searches will use DuckDuckGo.")
-
     tavily_key = get_tavily_key()
-    if tavily_key:
-        print("Tavily key found — general searches will use Tavily.")
-    else:
-        print("No Tavily key found — general searches will use DuckDuckGo.")
 
-    print("Searching for weekend activities and games...")
+    t.start("Searching for activities and games")
+    print(f"  Firecrawl: {'venue page scraping enabled' if firecrawl_key else 'not configured, using DuckDuckGo'}")
+    print(f"  Tavily: {'general searches enabled' if tavily_key else 'not configured, using DuckDuckGo'}")
     sections, weekend_date, weekend_date_range, weekend_saturday, sports_failed = gather_results(
         profile, firecrawl_key=firecrawl_key, tavily_key=tavily_key
     )
 
-    print("Fetching family calendar events...")
+    t.start("Fetching family calendar events")
     calendar_events, calendar_failed = fetch_calendar_events(weekend_saturday)
 
     all_failed = weather_failed + sports_failed + calendar_failed
@@ -943,20 +970,22 @@ def main():
     # Threshold of 5 catches widespread network outages (today's run had 14 failures)
     # while allowing for a few isolated timeouts on a normal run.
     if not debug and len(all_failed) >= 5:
-        print(f"Aborting: {len(all_failed)} data sources failed — skipping Claude and email to avoid wasting tokens.")
+        t._done_prev()
+        print(f"\nAborting: {len(all_failed)} data sources failed — skipping Claude and email to avoid wasting tokens.")
         print(f"  Failed: {', '.join(all_failed)}")
         print("Re-run the script once the network is available.")
         return
 
     if debug:
-        print("Evaluating results [DEBUG MODE — skipping Claude and email]...")
+        t.start("Generating prompt [DEBUG — skipping Claude and email]")
         evaluate_and_generate_email(
             sections, weather_data, calendar_events, profile, weekend_date, weekend_date_range,
             anthropic_key=None, failed_sources=all_failed, debug=True
         )
+        t.finish()
         return
 
-    print("Evaluating results with Claude and generating email...")
+    t.start("Generating email with Claude")
     html = evaluate_and_generate_email(
         sections, weather_data, calendar_events, profile, weekend_date, weekend_date_range,
         get_anthropic_key(), failed_sources=all_failed
@@ -968,9 +997,9 @@ def main():
     archive_path = os.path.join(archive_dir, f"weekend_{datetime.now().strftime('%Y-%m-%d')}.html")
     with open(archive_path, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"Email saved to {archive_path}")
+    print(f"  Saved to {archive_path}")
 
-    print("Sending email via AgentMail...")
+    t.start("Sending email via AgentMail")
     client = AgentMail(api_key=get_agentmail_key())
     client.inboxes.messages.send(
         inbox_id=SENDER_INBOX,
@@ -978,7 +1007,8 @@ def main():
         subject=f"Weekend Plans — {weekend_date}",
         html=html,
     )
-    print(f"Done! Email sent from {SENDER_INBOX} to {', '.join(RECIPIENTS)}")
+
+    t.finish(f"Email sent from {SENDER_INBOX} to {', '.join(RECIPIENTS)}")
 
 
 if __name__ == "__main__":
