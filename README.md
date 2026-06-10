@@ -15,7 +15,7 @@ Automatically searches for weekend activities in St. Louis, checks the family ca
    - WashU Bears (Baseball, Soccer)
    - SLU Billikens (Baseball)
 5. **Venue event pages** — Firecrawl scrapes/searches for specific events and rotating exhibits at favorite venues:
-   - Magic House, Science Center, Aquarium, Forest Park, Made for Kids, City Museum — Firecrawl search (full page content, not snippets)
+   - Magic House, Science Center, Aquarium, Forest Park, Made for Kids, City Museum, The Muny, Missouri History Museum, Union Station, Grant's Farm — Firecrawl search (full page content, not snippets)
    - St. Louis Zoo — direct Firecrawl scrape of `stlzoo.org/events/`
    - Missouri Botanical Garden — Tavily search targeting `missouribotanicalgarden.org` (events calendar is JS-rendered)
 6. **Neighborhood & activity search** — Tavily searches (with DuckDuckGo fallback) for:
@@ -117,6 +117,6 @@ To check or modify the schedule: Win+S → "Task Scheduler" → Task Scheduler L
 - **BenchApp calendar** (`benchapp-calendar-id`) is Mac's beer league hockey schedule. It's included in `GCAL_CALENDARS` and Claude is told what it represents in the prompt.
 - **Fox Sports City2 URL** (`/soccer/saint-louis-city-sc-2-team-schedule`) — if this ever breaks, Fox Sports is the only known server-rendered source for City2's schedule. ESPN has no MLS NEXT Pro data; mlsnextpro.com and stlcitysc.com/city2/schedule are JS-rendered.
 - **Google token** (`token.json`) refreshes automatically but expires every 7 days while the OAuth app is in Testing mode. If it stops working, delete `token.json` and run the script interactively (not via Task Scheduler) to re-authenticate via browser.
-- **Firecrawl credits** — Hobby plan allows ~500 scrapes/month. The script uses roughly 12–15 Firecrawl calls per run (8 venue searches + 2 direct scrapes + 2 neighborhood searches). At one run/week that's ~60 credits/month, well within the free tier.
+- **Firecrawl credits** — Hobby plan allows ~500 scrapes/month. The script uses roughly 16–19 Firecrawl calls per run (12 venue searches + 2 direct scrapes + 2 neighborhood searches). At one run/week that's ~70 credits/month, well within the free tier.
 - **Tavily credits** — Free tier allows 1,000 searches/month. The script uses ~10 Tavily calls per run (~40/month at one run/week).
 - **Task Scheduler** runs `run.bat` every Wednesday at noon. If the task fails, check `run.log` for errors. The task must use the full Python 3.12 path — `run.bat` is already configured for this.

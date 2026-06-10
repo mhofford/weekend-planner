@@ -651,6 +651,10 @@ def gather_results(profile, firecrawl_key="", tavily_key=""):
         ("Forest Park",              f'"Forest Park" St. Louis event festival "{sat_date}"'),
         ("Made for Kids",            f'"Made for Kids" St. Louis event "{sat_date}"'),
         ("City Museum",              f'"City Museum" St. Louis special event "{sat_date}"'),
+        ("The Muny",                 f'"The Muny" St. Louis performance show "{sat_date}"'),
+        ("Missouri History Museum",  f'"Missouri History Museum" St. Louis event program "{sat_date}"'),
+        ("Union Station St. Louis",  f'"Union Station" St. Louis event activity "{sat_date}"'),
+        ("Grant\'s Farm",            f'"Grant\'s Farm" St. Louis event "{sat_date}"'),
     ]
 
     venue_items = []
