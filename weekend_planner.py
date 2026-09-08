@@ -29,25 +29,22 @@ from googleapiclient.discovery import build
 
 CENTRAL = ZoneInfo("America/Chicago")  # handles CDT/CST automatically
 
-SENDER_INBOX = "your-inbox@agentmail.to"
-RECIPIENTS = ["you@example.com", "recipient@example.com"]
 PROFILE_PATH = "family_profile.json"
+
+# Email (sender inbox + recipients) and the calendars to pull weekend events from
+# live in family_profile.json so no personal addresses are committed to the repo.
+# Profile schema:
+#   "email":     {"sender_inbox": "...", "recipients": ["...", ...]}
+#   "calendars": {"Display Name": "calendar-id-or-address", ...}
+# BenchApp is Mac's beer league hockey schedule (imported into Google Calendar).
 
 # Google Calendar OAuth files — credentials.json downloaded from Google Cloud Console,
 # token.json is auto-generated on first run and reused thereafter.
 # If token.json becomes invalid (e.g. after a long gap), delete it and run the script
-# interactively (not via Task Scheduler) so the browser OAuth flow can re-authenticate.
+# interactively (not via a scheduler) so the browser OAuth flow can re-authenticate.
 GCAL_CREDENTIALS_FILE = "credentials.json"
 GCAL_TOKEN_FILE = "token.json"
 GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-
-# Calendars to pull weekend events from. Add or remove as needed.
-GCAL_CALENDARS = {
-    "Family":        "you@example.com",
-    "Mac & Anne":    "partner@example.com",
-    "Luke's School": "school-calendar-id",
-    "BenchApp":      "benchapp-calendar-id",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -56,12 +53,16 @@ GCAL_CALENDARS = {
 
 def _get_win_env(var_name):
     """Fetch a Windows user environment variable via PowerShell.
-    Needed because Git Bash does not inherit Windows user env vars."""
-    return subprocess.check_output(
-        ["powershell.exe", "-Command",
-         f"[System.Environment]::GetEnvironmentVariable('{var_name}', 'User')"],
-        text=True
-    ).strip()
+    Needed because Git Bash does not inherit Windows user env vars.
+    Returns "" if powershell.exe isn't available (e.g. running on Linux/macOS)."""
+    try:
+        return subprocess.check_output(
+            ["powershell.exe", "-Command",
+             f"[System.Environment]::GetEnvironmentVariable('{var_name}', 'User')"],
+            text=True
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return ""
 
 
 def get_agentmail_key():
@@ -88,6 +89,16 @@ def load_profile(path=PROFILE_PATH):
     Members under 2 years get age_weeks; others get age in years."""
     with open(path) as f:
         profile = json.load(f)
+
+    # Fail early with a clear message if the personal config block is missing,
+    # rather than a bare KeyError deep in the pipeline.
+    for key in ("email", "calendars"):
+        if key not in profile:
+            raise SystemExit(f"{path} is missing the required \"{key}\" section — see the schema note in weekend_planner.py")
+    for key in ("sender_inbox", "recipients"):
+        if key not in profile["email"]:
+            raise SystemExit(f"{path} \"email\" section is missing \"{key}\"")
+
     today = datetime.now()
     for m in profile["family_members"]:
         if "birth_year" in m:
@@ -502,8 +513,9 @@ def get_gcal_service():
     return build("calendar", "v3", credentials=creds)
 
 
-def fetch_calendar_events(weekend_saturday):
+def fetch_calendar_events(weekend_saturday, calendars):
     """Fetch events from all family calendars covering Friday evening through Sunday.
+    `calendars` is a {display name: calendar id} dict from family_profile.json.
     Returns a flat list of events with calendar name, title, start time, and location.
     Individual calendar failures are caught so one bad calendar doesn't break the rest."""
     try:
@@ -515,7 +527,7 @@ def fetch_calendar_events(weekend_saturday):
         time_max = datetime(sunday.year, sunday.month, sunday.day, 23, 59, 59, tzinfo=CENTRAL).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         all_events = []
-        for cal_name, cal_id in GCAL_CALENDARS.items():
+        for cal_name, cal_id in calendars.items():
             try:
                 result = service.events().list(
                     calendarId=cal_id,
@@ -967,7 +979,7 @@ def main():
     )
 
     t.start("Fetching family calendar events")
-    calendar_events, calendar_failed = fetch_calendar_events(weekend_saturday)
+    calendar_events, calendar_failed = fetch_calendar_events(weekend_saturday, profile["calendars"])
 
     all_failed = weather_failed + sports_failed + calendar_failed
     # Abort if too many data sources failed — no point spending tokens on an empty email.
@@ -1004,15 +1016,17 @@ def main():
     print(f"  Saved to {archive_path}")
 
     t.start("Sending email via AgentMail")
+    sender_inbox = profile["email"]["sender_inbox"]
+    recipients = profile["email"]["recipients"]
     client = AgentMail(api_key=get_agentmail_key())
     client.inboxes.messages.send(
-        inbox_id=SENDER_INBOX,
-        to=RECIPIENTS,
+        inbox_id=sender_inbox,
+        to=recipients,
         subject=f"Weekend Plans — {weekend_date}",
         html=html,
     )
 
-    t.finish(f"Email sent from {SENDER_INBOX} to {', '.join(RECIPIENTS)}")
+    t.finish(f"Email sent from {sender_inbox} to {', '.join(recipients)}")
 
 
 if __name__ == "__main__":
