@@ -223,10 +223,11 @@ ESPN_TEAMS = [
 # pages as plain HTML — no API key needed, just a GET request and text parsing.
 # Update the season slug (e.g. 2025-26, 2026) each year if needed.
 COLLEGE_SCHEDULES = [
-    {"name": "Lindenwood Lions", "sport": "Hockey",  "url": "https://lindenwoodlions.com/sports/mhockey-ncaa/schedule/2025-26"},
+    {"name": "Lindenwood Lions", "sport": "Hockey",   "url": "https://lindenwoodlions.com/sports/mhockey-ncaa/schedule/2025-26"},
     {"name": "WashU Bears",      "sport": "Baseball", "url": "https://washubears.com/sports/baseball/schedule/2026"},
-    {"name": "WashU Bears",      "sport": "Soccer",   "url": "https://washubears.com/sports/msoccer/schedule/2026"},
+    {"name": "WashU Bears",      "sport": "Soccer",   "url": "https://washubears.com/sports/mens-soccer/schedule"},
     {"name": "SLU Billikens",    "sport": "Baseball", "url": "https://slubillikens.com/sports/baseball/schedule"},
+    {"name": "SLU Billikens",    "sport": "Soccer",   "url": "https://slubillikens.com/sports/mens-soccer/schedule"},
 ]
 
 
@@ -341,6 +342,14 @@ def fetch_college_home_games(weekend_saturday):
             )
             if resp.status_code != 200:
                 print(f"  {team['name']} {team['sport']} schedule: HTTP {resp.status_code}")
+                failed_sources.append(f"{team['name']} {team['sport']} schedule")
+                continue
+
+            # SIDEARM redirects an unknown sport slug to the site homepage (index.aspx)
+            # with a 200, so a stale URL would otherwise be parsed as "no games" silently.
+            if "/schedule" not in resp.url or resp.url.rstrip("/").endswith("index.aspx"):
+                print(f"  {team['name']} {team['sport']} schedule: redirected to {resp.url} — URL likely stale")
+                failed_sources.append(f"{team['name']} {team['sport']} schedule")
                 continue
 
             # Strip HTML tags, decode named entities (e.g. &amp; &nbsp;), collapse whitespace
@@ -356,8 +365,13 @@ def fetch_college_home_games(weekend_saturday):
                 idx = text.find(date_str)
                 if idx == -1:
                     continue
-                # Grab a wide window so Claude can read opponent, time, and home/away context
-                context = text[max(0, idx - 120): idx + 400].strip()
+                window = text[max(0, idx - 200): idx + 300]
+                # SIDEARM pages embed JSON-LD like
+                #   "description":"<Home Team> Vs <Opponent> on M/D/YYYY H:MM:SS PM"
+                # Prefer that clean sentence; fall back to the raw window for pages
+                # that only render the schedule as visible text.
+                m = re.search(r'"description":"([^"]*\bon +\d{1,2}/\d{1,2}/\d{4}[^"]*)"', window)
+                context = m.group(1).strip() if m else window.strip()
                 # "vs" = home game; "at " or "@ " before opponent = away — skip away games
                 if re.search(r'\bvs\.?\s', context, re.IGNORECASE):
                     found_dates.add(day.date())

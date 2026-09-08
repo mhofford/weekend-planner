@@ -13,7 +13,7 @@ Automatically searches for weekend activities in St. Louis, checks the family ca
 4. **College sports schedules** — Fetches official athletics schedule pages directly for home game detection:
    - Lindenwood Lions (Hockey)
    - WashU Bears (Baseball, Soccer)
-   - SLU Billikens (Baseball)
+   - SLU Billikens (Baseball, Soccer)
 5. **Venue event pages** — Firecrawl scrapes/searches for specific events and rotating exhibits at favorite venues:
    - Magic House, Science Center, Aquarium, Forest Park, Made for Kids, City Museum, The Muny, Missouri History Museum, Union Station, Grant's Farm — Firecrawl search (full page content, not snippets)
    - St. Louis Zoo — direct Firecrawl scrape of `stlzoo.org/events/`
@@ -132,7 +132,7 @@ A scheduled task runs `run.sh` every Wednesday at noon (e.g. a cron entry: `0 12
 
 ## Maintenance notes
 
-- **College schedule URLs** use season slugs (e.g. `/schedule/2026`, `/schedule/2025-26`). Update `COLLEGE_SCHEDULES` in `weekend_planner.py` at the start of each new season.
+- **College schedule URLs** — some use season slugs (e.g. `/schedule/2026`, `/schedule/2025-26`); update `COLLEGE_SCHEDULES` in `weekend_planner.py` at the start of each new season. If a slug goes stale, SIDEARM redirects to the site homepage with a 200 — `fetch_college_home_games` now detects that (final URL no longer under `/schedule`) and reports the source as unavailable instead of silently returning no games.
 - **ESPN team IDs** are stable and should not need updating.
 - **ESPN `home_venue` names** must match what ESPN returns for the game venue. City SC's stadium was renamed from CityPark to Energizer Park in 2026 — the old name caused every home game to be silently dropped. Update `ESPN_TEAMS` if a venue is renamed again. The Battlehawks play at The Dome at America's Center.
 - **BenchApp calendar** is Mac's beer league hockey schedule. It's one of the entries under `calendars` in `family_profile.json` and Claude is told what it represents in the prompt.
