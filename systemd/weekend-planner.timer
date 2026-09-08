@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Weekend Planner every Wednesday at noon
+Documentation=https://github.com/mhofford/weekend-planner
+
+[Timer]
+OnCalendar=Wed 12:00
+# If the laptop was asleep/off at the scheduled time, run on next wake/boot.
+Persistent=true
+# Spread out slightly so it's not competing with everything else at exactly 12:00.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
