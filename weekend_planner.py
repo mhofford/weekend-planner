@@ -8,19 +8,23 @@ evaluates results with Claude for relevance, then emails a summary.
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 import requests
 import anthropic
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
 from ddgs import DDGS
 from agentmail import AgentMail
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+
+# Load API keys from a .env file next to this script (see .env.example).
+# Real environment variables still win over .env values.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 
 # ---------------------------------------------------------------------------
@@ -50,38 +54,24 @@ GCAL_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 # ---------------------------------------------------------------------------
 # API Key Helpers
 # ---------------------------------------------------------------------------
-
-def _get_win_env(var_name):
-    """Fetch a Windows user environment variable via PowerShell.
-    Needed because Git Bash does not inherit Windows user env vars.
-    Returns "" if powershell.exe isn't available (e.g. running on Linux/macOS)."""
-    try:
-        return subprocess.check_output(
-            ["powershell.exe", "-Command",
-             f"[System.Environment]::GetEnvironmentVariable('{var_name}', 'User')"],
-            text=True
-        ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        return ""
-
+# Keys are read from environment variables, populated from .env at startup.
+# ANTHROPIC_API_KEY and AGENTMAIL_API_KEY are required; FIRECRAWL_API_KEY and
+# TAVILY_API_KEY are optional (the script falls back to DuckDuckGo when unset).
 
 def get_agentmail_key():
-    # Prefer env var (e.g. set at shell level); fall back to Windows user env var
-    return os.environ.get("AGENTMAIL_API_KEY") or _get_win_env("AGENTMAIL_API_KEY")
+    return os.environ.get("AGENTMAIL_API_KEY", "")
 
 
 def get_anthropic_key():
-    return os.environ.get("ANTHROPIC_API_KEY") or _get_win_env("ANTHROPIC_API_KEY")
+    return os.environ.get("ANTHROPIC_API_KEY", "")
 
 
 def get_firecrawl_key():
-    return os.environ.get("FIRECRAWL_API_KEY") or _get_win_env("FIRECRAWL_API_KEY") or ""
+    return os.environ.get("FIRECRAWL_API_KEY", "")
 
 
 def get_tavily_key():
-    return os.environ.get("TAVILY_API_KEY") or _get_win_env("TAVILY_API_KEY") or ""
-
-
+    return os.environ.get("TAVILY_API_KEY", "")
 
 
 def load_profile(path=PROFILE_PATH):
@@ -961,6 +951,20 @@ def main():
     debug = "--debug" in sys.argv
     total_steps = 5 if debug else 6
     t = StepTimer(total_steps)
+
+    # Debug mode skips Claude and email, so it only needs the search keys.
+    if not debug:
+        missing = [
+            name for name, val in (
+                ("ANTHROPIC_API_KEY", get_anthropic_key()),
+                ("AGENTMAIL_API_KEY", get_agentmail_key()),
+            ) if not val
+        ]
+        if missing:
+            raise SystemExit(
+                f"Missing required API key(s): {', '.join(missing)}. "
+                "Add them to the .env file next to weekend_planner.py (see .env.example)."
+            )
 
     t.start("Loading family profile")
     profile = load_profile()

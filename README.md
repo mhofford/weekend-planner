@@ -49,14 +49,23 @@ pip install -r requirements.txt
 
 ### 2. API keys
 
-Add these as Windows user environment variables (Win+S → "Edit environment variables" → User variables → New):
+Copy `.env.example` to `.env` and fill in your keys:
 
-| Variable | Description |
-|---|---|
-| `AGENTMAIL_API_KEY` | AgentMail — email delivery |
-| `ANTHROPIC_API_KEY` | Anthropic — Claude LLM |
-| `FIRECRAWL_API_KEY` | Firecrawl — full page scraping for venue event pages |
-| `TAVILY_API_KEY` | Tavily — relevance-scored search for neighborhood/activity queries |
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+| Variable | Required? | Description | Get one at |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | **yes** | Anthropic — Claude LLM | console.anthropic.com |
+| `AGENTMAIL_API_KEY` | **yes** | AgentMail — email delivery | app.agentmail.to |
+| `FIRECRAWL_API_KEY` | no | Firecrawl — full page scraping for venue event pages | firecrawl.dev |
+| `TAVILY_API_KEY` | no | Tavily — relevance-scored search for neighborhood/activity queries | app.tavily.com |
+
+`.env` is gitignored. The script loads it automatically (via `python-dotenv`); real environment
+variables, if set, take precedence. Without the two required keys the script exits early with a
+message. Without the optional keys it still runs, falling back to DuckDuckGo search.
 
 ### 3. Google Calendar credentials
 
@@ -81,19 +90,17 @@ The script exits with a clear error if `email` or `calendars` is missing.
 
 ## Running
 
-The script reads API keys from Windows user environment variables via PowerShell internally — no need to set them manually before running.
+API keys are loaded from `.env` automatically — no need to export anything first.
 
 **Normal run** (searches, generates, and sends the email):
 ```bash
-"C:\Program Files\Python312\python.exe" weekend_planner.py
+python3 weekend_planner.py      # or: ./run_full.sh
 ```
 
 **Debug mode** (runs all searches, writes prompt to `debug_prompt.txt`, skips Claude and email — free to run):
 ```bash
-"C:\Program Files\Python312\python.exe" weekend_planner.py --debug
+python3 weekend_planner.py --debug      # or: ./run_debug.sh
 ```
-
-> **Important:** Use Python 3.12 (`C:\Program Files\Python312\python.exe`), not the default `python` command. Python 3.14 is also installed but is missing the Google API libraries required by this script.
 
 ## Error handling
 
@@ -111,6 +118,8 @@ A scheduled task runs `run.sh` every Wednesday at noon (e.g. a cron entry: `0 12
 |---|---|
 | `weekend_planner.py` | Main script |
 | `family_profile.json` | Family info, location, interests, venue preferences, email config, and calendar IDs (gitignored) |
+| `.env` | API keys (gitignored) — copy from `.env.example` |
+| `.env.example` | Template listing the required and optional API keys |
 | `run.sh` | Wrapper script used by the scheduled task (logs to `run.log`) |
 | `run_full.sh` | Interactive wrapper — runs the full pipeline |
 | `run_debug.sh` | Interactive wrapper — runs in debug mode |
