@@ -550,11 +550,23 @@ def fetch_calendar_events(weekend_saturday, calendars):
 # ---------------------------------------------------------------------------
 
 def fetch_weather(profile):
-    """Fetch a 3-day forecast from Open-Meteo (free, no API key required).
-    Lat/lon are stored in family_profile.json to avoid a geocoding round-trip."""
+    """Fetch the Friday–Sunday forecast for the upcoming weekend from Open-Meteo
+    (free, no API key required).
+    Lat/lon are stored in family_profile.json to avoid a geocoding round-trip.
+
+    Uses explicit start_date/end_date rather than forecast_days: the script runs
+    mid-week, so "next N days" would stop short of the weekend. Open-Meteo covers
+    up to 16 days out, well beyond the ~6-day lead time here."""
     try:
         lat = profile["location"]["latitude"]
         lon = profile["location"]["longitude"]
+
+        today = datetime.now()
+        # weekday(): 0=Mon ... 5=Sat; `or 7` skips to next Saturday if today is Saturday
+        days_until_saturday = (5 - today.weekday()) % 7 or 7
+        weekend_saturday = today + timedelta(days=days_until_saturday)
+        weekend_friday = weekend_saturday - timedelta(days=1)
+        weekend_sunday = weekend_saturday + timedelta(days=1)
 
         resp = requests.get(
             "https://api.open-meteo.com/v1/forecast",
@@ -564,7 +576,8 @@ def fetch_weather(profile):
                 "daily": "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
                 "temperature_unit": "fahrenheit",
                 "timezone": "America/Chicago",
-                "forecast_days": 3,
+                "start_date": weekend_friday.strftime("%Y-%m-%d"),
+                "end_date": weekend_sunday.strftime("%Y-%m-%d"),
             },
             timeout=10
         ).json()
