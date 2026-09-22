@@ -6,11 +6,17 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=%h/Projects/weekend-planner
+# System-scope unit (installed to /etc/systemd/system) so the paired timer's
+# WakeSystem=true can actually resume the laptop from suspend. Runs as the
+# regular user so it can read the gitignored secrets/config in the repo.
+# NOTE: %h is NOT usable here — for the system manager it always resolves to
+# /root regardless of User=, so the path is hardcoded instead.
+User=mhofford
+WorkingDirectory=/home/mhofford/Projects/weekend-planner
 # Give Wi-Fi a chance to come up if the timer fires right after wake/boot
 # (bounded; never blocks the run for more than ~2 minutes).
 ExecStartPre=/bin/sh -c 'for i in $(seq 1 24); do curl -sf -m 3 https://api.open-meteo.com/v1/forecast >/dev/null 2>&1 && exit 0; sleep 5; done; exit 0'
-ExecStart=%h/Projects/weekend-planner/run.sh
+ExecStart=/home/mhofford/Projects/weekend-planner/run.sh
 # A normal run is ~3 min (mostly the Claude call); kill anything stuck
 # (e.g. an expired Google token trying to open a browser).
 TimeoutStartSec=900

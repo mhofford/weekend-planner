@@ -4,7 +4,13 @@ Documentation=https://github.com/mhofford/weekend-planner
 
 [Timer]
 OnCalendar=Wed 12:00
-# If the laptop was asleep/off at the scheduled time, run on next wake/boot.
+# Actually resume the laptop from suspend at the scheduled time (requires the
+# RTC wake-alarm hardware and a system-scope unit — user timers can't set this).
+# Falls back to Persistent's next-boot catch-up if the hardware can't wake it
+# (e.g. fully powered off rather than suspended).
+WakeSystem=true
+# If the laptop was fully off (not just suspended) at the scheduled time, run
+# on next boot instead.
 Persistent=true
 # Spread out slightly so it's not competing with everything else at exactly 12:00.
 RandomizedDelaySec=300

@@ -110,26 +110,37 @@ python3 weekend_planner.py --debug      # or: ./run_debug.sh
 
 ## Scheduled runs
 
-A **systemd user timer** runs the pipeline every Wednesday at noon. Units are in `systemd/`
-(they use the `%h` specifier and assume the repo lives at `~/Projects/weekend-planner`):
+A **system-scope systemd timer** runs the pipeline every Wednesday at noon, and wakes
+the laptop from suspend to do it. Units are in `systemd/` and assume the repo lives at
+`/home/mhofford/Projects/weekend-planner` — paths are hardcoded rather than using the
+`%h` specifier, since for a *system*-scope unit `%h` always resolves to `/root`
+regardless of `User=`:
 
 ```bash
-cp systemd/weekend-planner.{service,timer} ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now weekend-planner.timer
+sudo cp systemd/weekend-planner.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now weekend-planner.timer
 
-systemctl --user list-timers weekend-planner.timer   # check next run
-journalctl --user -u weekend-planner.service -n 50    # view last run's log
+systemctl list-timers weekend-planner.timer          # check next run
+journalctl -u weekend-planner.service -n 50           # view last run's log
 ```
 
-Why a timer and not cron: on a laptop, cron silently skips the job if the machine is
-asleep or off at noon. The timer has `Persistent=true`, so a missed run fires on the
-next wake/boot. Output also goes to `run.log` (via `run.sh`).
+Why system-scope and not a user timer: a `systemd --user` timer can only fire while the
+machine happens to already be awake — on a laptop that suspends for days at a time (lid
+closed over a weekend, say), the Wednesday-noon trigger can be missed entirely and only
+"catches up" whenever you next happen to resume the machine, which may be well after the
+weekend has passed. The system timer sets `WakeSystem=true`, which uses the RTC
+wake-alarm (`/dev/rtc0`) to actually resume the machine from suspend at the scheduled
+time, run the job, and let it go back to sleep — instead of just hoping it's awake.
+`Persistent=true` remains as a fallback for the case the machine is fully powered off
+(not just suspended) at the scheduled time, or the RTC wake-alarm doesn't fire for some
+reason. Output goes to `run.log` (via `run.sh`).
 
-- **Manual run:** `systemctl --user start weekend-planner.service` (sends a real email).
-- **Survive logout:** `sudo loginctl enable-linger $USER` so the timer runs even when
-  you're not logged into a graphical session. Optional — with `Persistent=true` a run
-  missed while logged out is caught up at next login anyway.
+- **Manual run:** `sudo systemctl start weekend-planner.service` (sends a real email).
+- **Why `loginctl enable-linger`:** not required for the scheduled run itself — system
+  units run independent of any login session. It's enabled anyway so other
+  `systemd --user` state (e.g. ad hoc `systemctl --user start` manual runs) doesn't
+  depend on being logged in either.
 - `run.sh` auto-selects a `python3` that has the dependencies (cron/systemd run with a
   minimal `PATH` where bare `python3` is the dependency-free system Python). Override
   with `WEEKEND_PLANNER_PYTHON=/path/to/python3`.
@@ -145,7 +156,7 @@ next wake/boot. Output also goes to `run.log` (via `run.sh`).
 | `run.sh` | Wrapper used by the systemd timer — picks a working `python3`, logs to `run.log` |
 | `run_full.sh` | Interactive wrapper — runs the full pipeline |
 | `run_debug.sh` | Interactive wrapper — runs in debug mode |
-| `systemd/` | `weekend-planner.service` + `.timer` for the weekly scheduled run |
+| `systemd/` | `weekend-planner.service` + `.timer` for the weekly scheduled run (system-scope units, installed to `/etc/systemd/system/`) |
 | `requirements.txt` | Python dependencies |
 | `credentials.json` | Google OAuth credentials — download from Google Cloud Console, do not commit |
 | `token.json` | Auto-generated Google auth token — do not commit |
@@ -163,4 +174,4 @@ next wake/boot. Output also goes to `run.log` (via `run.sh`).
 - **Google token** (`token.json`) refreshes automatically but expires every 7 days while the OAuth app is in Testing mode. If it stops working, delete `token.json` and run the script interactively (not via the scheduled task) to re-authenticate via browser.
 - **Firecrawl credits** — Hobby plan allows ~500 scrapes/month. The script uses roughly 16–19 Firecrawl calls per run (12 venue searches + 2 direct scrapes + 2 neighborhood searches). At one run/week that's ~70 credits/month, well within the free tier.
 - **Tavily credits** — Free tier allows 1,000 searches/month. The script uses ~10 Tavily calls per run (~40/month at one run/week).
-- **Scheduled runs** — the systemd user timer runs `run.sh` every Wednesday at noon (see [Scheduled runs](#scheduled-runs)). Check `journalctl --user -u weekend-planner.service` or `run.log` after a failure.
+- **Scheduled runs** — the systemd system timer runs `run.sh` every Wednesday at noon, waking the laptop from suspend if needed (see [Scheduled runs](#scheduled-runs)). Check `journalctl -u weekend-planner.service` or `run.log` after a failure.
