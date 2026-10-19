@@ -421,10 +421,15 @@ def fetch_city2_home_games(weekend_saturday):
 
         # Restrict to the UPCOMING GAMES section so we don't accidentally match rows
         # from the PAST GAMES section, which uses a similar M/D format.
+        # Fox omits the UPCOMING GAMES heading entirely once the season (or playoff
+        # run) is over, leaving only PAST GAMES. Missing both means the layout changed.
         upcoming_idx = text.find("UPCOMING GAMES")
         if upcoming_idx < 0:
-            print("  City2 Fox Sports: UPCOMING GAMES section not found")
-            return [], []
+            if "PAST GAMES" in text:
+                print("  City2 Fox Sports: no upcoming games (season over)")
+                return [], []
+            print("  City2 Fox Sports: schedule sections not found (page layout changed?)")
+            return [], ["City2 schedule (Fox Sports)"]
         text = text[upcoming_idx:]
 
         # Fox Sports renders each upcoming game as a single line:
