@@ -925,11 +925,13 @@ Respond with only the HTML email — nothing before <EMAIL_HTML> and nothing aft
 
     client = anthropic.Anthropic(api_key=anthropic_key)
     with client.messages.stream(
-        model="claude-opus-4-6",
-        max_tokens=16000,
+        model="claude-opus-5-5",
+        max_tokens=32000,
+        output_config={"effort": "high"},
         messages=[{"role": "user", "content": prompt}]
     ) as stream:
-        full_response = stream.get_final_message().content[0].text
+        message = stream.get_final_message()
+    full_response = "".join(b.text for b in message.content if b.type == "text")
 
     # Parse the HTML section out of Claude's response
     html_match = re.search(r'<EMAIL_HTML>(.*?)</EMAIL_HTML>', full_response, re.DOTALL)
