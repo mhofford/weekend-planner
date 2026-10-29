@@ -16,7 +16,12 @@ WorkingDirectory=/home/mhofford/Projects/weekend-planner
 # Give Wi-Fi a chance to come up if the timer fires right after wake/boot
 # (bounded; never blocks the run for more than ~2 minutes).
 ExecStartPre=/bin/sh -c 'for i in $(seq 1 24); do curl -sf -m 3 https://api.open-meteo.com/v1/forecast >/dev/null 2>&1 && exit 0; sleep 5; done; exit 0'
-ExecStart=/home/mhofford/Projects/weekend-planner/run.sh
+# Hold a sleep + lid-switch inhibitor for the whole run: after WakeSystem
+# resumes the laptop, logind otherwise re-suspends it within a second if the
+# lid is closed (HandleLidSwitch ignores plain sleep inhibitors by default).
+# polkit only grants these locks to processes with a login session, so take
+# the lock as root ("+" prefix) and drop back to mhofford for the script.
+ExecStart=+/usr/bin/systemd-inhibit --what=sleep:handle-lid-switch --mode=block --who=weekend-planner --why="Weekly weekend-plan run" /usr/bin/setpriv --reuid=mhofford --regid=mhofford --init-groups --reset-env /home/mhofford/Projects/weekend-planner/run.sh
 # A normal run is ~3 min (mostly the Claude call); kill anything stuck
 # (e.g. an expired Google token trying to open a browser).
 TimeoutStartSec=900

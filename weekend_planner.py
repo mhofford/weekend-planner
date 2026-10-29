@@ -1028,7 +1028,8 @@ def main():
         print(f"\nAborting: {len(all_failed)} data sources failed — skipping Claude and email to avoid wasting tokens.")
         print(f"  Failed: {', '.join(all_failed)}")
         print("Re-run the script once the network is available.")
-        return
+        # Non-zero so systemd marks the run failed instead of "Finished".
+        sys.exit(1)
 
     if debug:
         t.start("Generating prompt [DEBUG — skipping Claude and email]")
