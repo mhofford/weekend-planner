@@ -655,7 +655,9 @@ def gather_results(profile, firecrawl_key="", tavily_key=""):
     weekend_friday = weekend_saturday - timedelta(days=1)
     weekend_sunday = weekend_saturday + timedelta(days=1)
     weekend_date = weekend_saturday.strftime("%B %d")
-    weekend_date_range = f"{weekend_friday.strftime('%B %d')}-{weekend_sunday.strftime('%d')}"  # e.g. "March 13-15"
+    # e.g. "March 13-15", or "October 30-November 01" when the weekend spans two months
+    sunday_fmt = '%d' if weekend_sunday.month == weekend_friday.month else '%B %d'
+    weekend_date_range = f"{weekend_friday.strftime('%B %d')}-{weekend_sunday.strftime(sunday_fmt)}"
 
     sections = []
 
