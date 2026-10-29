@@ -166,7 +166,7 @@ reason. Output goes to `run.log` (via `run.sh`).
 
 ## Maintenance notes
 
-- **College schedule URLs** — some use season slugs (e.g. `/schedule/2026`, `/schedule/2025-26`); update `COLLEGE_SCHEDULES` in `weekend_planner.py` at the start of each new season. If a slug goes stale, SIDEARM redirects to the site homepage with a 200 — `fetch_college_home_games` now detects that (final URL no longer under `/schedule`) and reports the source as unavailable instead of silently returning no games.
+- **College schedule URLs** — `COLLEGE_SCHEDULES` uses slug-less URLs (`/schedule`, not `/schedule/2025-26`) so they follow the current season automatically; avoid adding a season slug, since a stale one silently serves last season's dates, which the date matcher can mistake for this weekend. If a slug ever goes stale, SIDEARM redirects to the site homepage with a 200 — `fetch_college_home_games` now detects that (final URL no longer under `/schedule`) and reports the source as unavailable instead of silently returning no games.
 - **ESPN team IDs** are stable and should not need updating.
 - **ESPN `home_venue` names** must match what ESPN returns for the game venue. City SC's stadium was renamed from CityPark to Energizer Park in 2026 — the old name caused every home game to be silently dropped. Update `ESPN_TEAMS` if a venue is renamed again. The Battlehawks play at The Dome at America's Center.
 - **BenchApp calendar** is Mac's beer league hockey schedule. It's one of the entries under `calendars` in `family_profile.json` and Claude is told what it represents in the prompt.

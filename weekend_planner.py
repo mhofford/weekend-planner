@@ -221,13 +221,16 @@ ESPN_TEAMS = [
 # College teams: fetch schedule pages directly from official athletics sites.
 # All three schools use the SIDEARM Sports platform, which server-renders schedule
 # pages as plain HTML — no API key needed, just a GET request and text parsing.
-# Update the season slug (e.g. 2025-26, 2026) each year if needed.
+# URLs have no season slug (e.g. /schedule, not /schedule/2025-26) so they always
+# serve the current season and don't go stale each year.
 COLLEGE_SCHEDULES = [
-    {"name": "Lindenwood Lions", "sport": "Hockey",   "url": "https://lindenwoodlions.com/sports/mhockey-ncaa/schedule/2025-26"},
-    {"name": "WashU Bears",      "sport": "Baseball", "url": "https://washubears.com/sports/baseball/schedule/2026"},
+    {"name": "Lindenwood Lions", "sport": "Hockey",   "url": "https://lindenwoodlions.com/sports/mhockey-ncaa/schedule"},
+    {"name": "WashU Bears",      "sport": "Baseball", "url": "https://washubears.com/sports/baseball/schedule"},
     {"name": "WashU Bears",      "sport": "Soccer",   "url": "https://washubears.com/sports/mens-soccer/schedule"},
+    {"name": "WashU Bears",      "sport": "Women's Soccer", "url": "https://washubears.com/sports/womens-soccer/schedule"},
     {"name": "SLU Billikens",    "sport": "Baseball", "url": "https://slubillikens.com/sports/baseball/schedule"},
     {"name": "SLU Billikens",    "sport": "Soccer",   "url": "https://slubillikens.com/sports/mens-soccer/schedule"},
+    {"name": "SLU Billikens",    "sport": "Women's Soccer", "url": "https://slubillikens.com/sports/womens-soccer/schedule"},
 ]
 
 
